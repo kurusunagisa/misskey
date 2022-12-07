@@ -1,0 +1,126 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx
+  labels:
+    app: nginx
+spec:
+  type: NodePort
+  ports:
+    - name: http-port
+      protocol: TCP
+      port: 80
+      targetPort: 80
+      nodePort: 30081
+  selector:
+    app: nginx
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: misskey
+  labels:
+    app: misskey
+spec:
+  type: ClusterIP
+  ports:
+    - name: http-port
+      protocol: TCP
+      port: 5000
+      targetPort: 5000
+  selector:
+    app: kube-test-app
+
+---
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kube-test-nginx
+spec:
+  selector:
+    matchLabels:
+      app: kube-test-nginx
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: kube-test-nginx
+    spec:
+      containers:
+      - name: kube-test-nginx
+        image: [dockerhub_account]/kube-test-nginx:1.0.0
+        ports:
+        - containerPort: 80
+
+---
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kube-test-app
+spec:
+  selector:
+    matchLabels:
+      app: kube-test-app
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: kube-test-app
+    spec:
+      containers:
+      - name: kube-test-app
+        image: [dockerhub_account]/kube-test-app:1.0.0
+        ports:
+        - containerPort: 5000
+
+---
+apiVersion: apps/v1 # for versions before 1.9.0 use apps/v1beta2
+kind: Deployment
+metadata:
+  name: redis-master
+  labels:
+    app: redis
+spec:
+  selector:
+    matchLabels:
+      app: redis
+      role: master
+      tier: backend
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: redis
+        role: master
+        tier: backend
+    spec:
+      containers:
+      - name: master
+        image: k8s.gcr.io/redis:e2e  # or just image: redis
+        resources:
+          requests:
+            cpu: 100m
+            memory: 100Mi
+        ports:
+        - containerPort: 6379
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-master
+  labels:
+    app: redis
+    role: master
+    tier: backend
+spec:
+  ports:
+  - port: 6379
+    targetPort: 6379
+  selector:
+    app: redis
+    role: master
+    tier: backend
